@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from .fields import StatField
 
 
-class StatsMixin:
+class StatsMixin(object):
     def _get_prepare_data(self, model):
         return {
             'content_type': ContentType.objects.get_for_model(model),
