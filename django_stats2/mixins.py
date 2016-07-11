@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.contrib.contenttypes.models import ContentType
 
-from .fields import Stat
+from .fields import StatField
 
 
 class StatsMixin:
@@ -15,9 +15,9 @@ class StatsMixin:
         for key in dir(self):
             try:
                 attr = getattr(self, key)
-                if isinstance(attr, Stat):
-                    attr.prepare(name=key, model=self,
-                                 **self._get_prepare_data(self))
+                if isinstance(attr, StatField):
+                    stat = attr.prepare(name=key, model=self, **self._get_prepare_data(self))
+                    setattr(self, key, stat)
             except AttributeError:
                 # Prevents errors when accesing the managers
                 pass

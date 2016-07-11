@@ -4,47 +4,51 @@ from .models import Note
 
 from django.contrib.contenttypes.models import ContentType
 
-from django_stats2.fields import Stat
+from django_stats2.objects import Stat
 
 
 class MixinTestCase(TestCase):
     stat_name = 'reads'
+
+    def setUp(self):
+        self.note = Note()
+
+    def tearDown(self):
+        if self.note.pk:
+            self.note.delete()
 
     def test_mixin_setup_stat_with_model_info(self):
         """
         Check that StatsMixin setup the required fields for the Stat object
         to work with the ModelStat model.
         """
-        note = Note()
-
-        attr = getattr(note, self.stat_name)
+        attr = getattr(self.note, self.stat_name)
 
         content_type = ContentType.objects.get_for_model(Note)
 
         self.assertTrue(isinstance(attr, Stat))
         self.assertEquals(attr.content_type.pk, content_type.pk)
-        self.assertEquals(attr.object_id, note.pk)
-        self.assertEquals(attr.model, note)
+        self.assertEquals(attr.object_id, self.note.pk)
         self.assertEquals(attr.name, self.stat_name)
 
     def test_mixin_setup_fills_pk(self):
-        note = Note.objects.create(title='Test', content='Content')
+        self.note = Note.objects.create(title='Test', content='Content')
 
-        attr = getattr(note, self.stat_name)
+        attr = getattr(self.note, self.stat_name)
 
-        self.assertTrue(attr.object_id, note.pk)
+        self.assertTrue(attr.object_id, self.note.pk)
 
     def test_mixin_setup_when_saved_after_creation(self):
-        note = Note()
-        attr = getattr(note, self.stat_name)
+        self.note = Note()
+        attr = getattr(self.note, self.stat_name)
 
         self.assertIsNone(attr.object_id)
 
-        note.tilte = 'Test'
-        note.content = 'Test'
-        note.save()
+        self.note.tilte = 'Test'
+        self.note.content = 'Test'
+        self.note.save()
 
-        self.assertEquals(attr.object_id, note.pk)
+        self.assertEquals(attr.object_id, self.note.pk)
 
     def test_mixin_stat_dont_screw_up_between_instances(self):
         note1 = Note.objects.create(title='1', content='1')
