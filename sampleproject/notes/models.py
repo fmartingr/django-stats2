@@ -2,10 +2,11 @@
 
 from django.db import models
 
-from django_stats2.models import Stat
+from django_stats2.mixins import StatsMixin
+from django_stats2.fields import Stat
 
 
-class Note(models.Model):
+class Note(StatsMixin, models.Model):
     title = models.CharField(max_length=128)
     content = models.TextField()
 

@@ -16,8 +16,3 @@ class ModelStat(models.Model):
         index_together = (
             ('content_type', 'object_id'),
         )
-
-
-class Stat:
-    def __init__(self, *args, **kwargs):
-        pass
