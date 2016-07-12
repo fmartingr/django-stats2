@@ -8,7 +8,7 @@ class ModelStat(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    date = models.DateField(null=True, db_index=True)
+    date = models.DateField(db_index=True)
     name = models.CharField(max_length=128)
     value = models.IntegerField()
 

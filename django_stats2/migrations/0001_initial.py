@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('object_id', models.PositiveIntegerField()),
-                ('date', models.DateField(db_index=True, null=True)),
+                ('date', models.DateField(db_index=True)),
                 ('name', models.CharField(max_length=128)),
                 ('value', models.IntegerField()),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType')),
