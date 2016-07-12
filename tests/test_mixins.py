@@ -9,7 +9,6 @@ from django_stats2.objects import Stat
 
 class MixinTestCase(TestCase):
     stat_name1 = 'reads'
-    stat_name2 = 'edits'
 
     def setUp(self):
         self.note = Note()
@@ -58,7 +57,3 @@ class MixinTestCase(TestCase):
         # Check that the instance is different
         self.assertNotEqual(id(getattr(note1, self.stat_name1)),
                             id(getattr(note2, self.stat_name1)))
-
-        # Check that the two stats have different properties as requested
-        self.assertNotEqual(getattr(note1, self.stat_name1).historical,
-                            getattr(note1, self.stat_name2).historical)

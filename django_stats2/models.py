@@ -13,6 +13,9 @@ class ModelStat(models.Model):
     value = models.IntegerField()
 
     class Meta:
+        unique_together = (
+            ('content_type', 'object_id', 'name', 'date'),
+        )
         index_together = (
             ('content_type', 'object_id'),
         )

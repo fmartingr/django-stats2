@@ -11,4 +11,4 @@ class Note(StatsMixin, models.Model):
     content = models.TextField()
 
     reads = StatField()
-    edits = StatField(historical=True)
+    edits = StatField()
