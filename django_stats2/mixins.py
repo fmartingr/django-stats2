@@ -1,31 +1,29 @@
 # -*- coding: utf-8 -*-
-from django.contrib.contenttypes.models import ContentType
-
 from .fields import StatField
 
 
 class StatsMixin(object):
-    def _get_prepare_data(self, model):
-        return {
-            'content_type': ContentType.objects.get_for_model(model),
-            'object_id': model.pk,
-        }
-
+    """
+    Allows a Django model to have some :class:`django_stats2.fields.StatField`
+    assigned as attributes.
+    """
     def _update_stat_fields(self):
         for key in dir(self):
             try:
                 attr = getattr(self, key)
                 if isinstance(attr, StatField):
-                    stat = attr.prepare(name=key, model=self, **self._get_prepare_data(self))
+                    stat = attr.prepare(name=key, model_instance=self)
                     setattr(self, key, stat)
             except AttributeError:
                 # Prevents errors when accesing the managers
                 pass
 
     def __init__(self, *args, **kwargs):
+        """Update the stat fields on model initialization"""
         super(StatsMixin, self).__init__(*args, **kwargs)
         self._update_stat_fields()
 
     def save(self, *args, **kwargs):
+        """Update the stat fields on model saving (handle creation)"""
         super(StatsMixin, self).save(*args, **kwargs)
         self._update_stat_fields()

@@ -8,7 +8,8 @@ from django_stats2.objects import Stat
 
 
 class MixinTestCase(TestCase):
-    stat_name = 'reads'
+    stat_name1 = 'reads'
+    stat_name2 = 'edits'
 
     def setUp(self):
         self.note = Note()
@@ -22,25 +23,25 @@ class MixinTestCase(TestCase):
         Check that StatsMixin setup the required fields for the Stat object
         to work with the ModelStat model.
         """
-        attr = getattr(self.note, self.stat_name)
+        attr = getattr(self.note, self.stat_name1)
 
         content_type = ContentType.objects.get_for_model(Note)
 
         self.assertTrue(isinstance(attr, Stat))
         self.assertEquals(attr.content_type.pk, content_type.pk)
         self.assertEquals(attr.object_id, self.note.pk)
-        self.assertEquals(attr.name, self.stat_name)
+        self.assertEquals(attr.name, self.stat_name1)
 
     def test_mixin_setup_fills_pk(self):
         self.note = Note.objects.create(title='Test', content='Content')
 
-        attr = getattr(self.note, self.stat_name)
+        attr = getattr(self.note, self.stat_name1)
 
         self.assertTrue(attr.object_id, self.note.pk)
 
     def test_mixin_setup_when_saved_after_creation(self):
         self.note = Note()
-        attr = getattr(self.note, self.stat_name)
+        attr = getattr(self.note, self.stat_name1)
 
         self.assertIsNone(attr.object_id)
 
@@ -54,5 +55,10 @@ class MixinTestCase(TestCase):
         note1 = Note.objects.create(title='1', content='1')
         note2 = Note.objects.create(title='2', content='2')
 
-        self.assertNotEqual(getattr(note1, self.stat_name).object_id,
-                            getattr(note2, self.stat_name).object_id)
+        # Check that the instance is different
+        self.assertNotEqual(id(getattr(note1, self.stat_name1)),
+                            id(getattr(note2, self.stat_name1)))
+
+        # Check that the two stats have different properties as requested
+        self.assertNotEqual(getattr(note1, self.stat_name1).historical,
+                            getattr(note1, self.stat_name2).historical)
