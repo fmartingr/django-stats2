@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('object_id', models.PositiveIntegerField()),
                 ('date', models.DateField(db_index=True)),
                 ('name', models.CharField(max_length=128)),
-                ('value', models.IntegerField()),
+                ('value', models.IntegerField(default=0)),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType')),
             ],
         ),

@@ -10,7 +10,7 @@ class ModelStat(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
     date = models.DateField(db_index=True)
     name = models.CharField(max_length=128)
-    value = models.IntegerField()
+    value = models.IntegerField(default=0)
 
     class Meta:
         unique_together = (
@@ -19,3 +19,11 @@ class ModelStat(models.Model):
         index_together = (
             ('content_type', 'object_id'),
         )
+
+    def incr(self, value):
+        self.value += value
+        self.save()
+
+    def decr(self, value):
+        self.value -= value
+        self.save()
