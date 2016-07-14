@@ -1,13 +1,19 @@
 django-stats2
 =============
 
+[![Build Status](https://travis-ci.org/fmartingr/django-stats2.svg?branch=master)](https://travis-ci.org/fmartingr/django-stats2)
+
 Easily create custom stats for your models.
+
+> **NOTE** Development not finished.
 
 # Usage
 
 ## Installation
 
-TODO
+```
+pip install git+https://github.com/fmartingr/django-stats2.git#egg=django_stats2
+```
 
 ## Configuration
 
