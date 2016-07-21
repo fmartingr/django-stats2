@@ -6,6 +6,7 @@ from django.core.cache.backends.base import InvalidCacheBackendError
 from django.utils import timezone
 
 from django_stats2.models import ModelStat
+from django_stats2 import settings as stats2_settings
 
 
 class Stat(object):
@@ -131,12 +132,16 @@ class Stat(object):
         return int(self._get_value())
 
     def incr(self, value=1, date=timezone.now().date()):
-        self._incr_cache(date, value)
-        self._incr_ddbb(date, value)
+        if stats2_settings.USE_CACHE:
+            self._incr_cache(date, value)
+        if stats2_settings.DDBB_DIRECT_INSERT:
+            self._incr_ddbb(date, value)
 
     def decr(self, value=1, date=timezone.now().date()):
-        self._decr_cache(date, value)
-        self._decr_ddbb(date, value)
+        if stats2_settings.USE_CACHE:
+            self._decr_cache(date, value)
+        if stats2_settings.DDBB_DIRECT_INSERT:
+            self._decr_ddbb(date, value)
 
     @property
     def object_id(self):
