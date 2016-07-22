@@ -110,7 +110,7 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         today = datetime.datetime.utcnow()
 
         self.note.reads.set(10, date=yesterday)
-        self.assertEqual(self.note.reads.get(), 10)
+        self.assertEqual(self.note.reads, 10)
         self.assertEqual(self.note.reads.get(date=today), 0)
         self.assertEqual(
             caches[stats2_settings.CACHE_KEY].get(self.note.reads._get_cache_key(date=today)),
@@ -126,12 +126,21 @@ class StatOperationsBaseTestCase(TransactionTestCase):
             self.note.reads.set(date=yesterday2, value=2)
             self.note.reads.set(date=yesterday3, value=3)
 
-        for d in (yesterday, yesterday2, yesterday3):
-            self.assertTrue(
-                self.note.reads._get_cache_key(date=d) in caches[stats2_settings.CACHE_KEY]
-            )
+        self.assertIn(
+            self.note.reads._get_cache_key(value_type='history',
+                                           date=yesterday),
+            caches[stats2_settings.CACHE_KEY])
+        self.assertIn(
+            self.note.reads._get_cache_key(value_type='history',
+                                           date=yesterday2),
+            caches[stats2_settings.CACHE_KEY])
+        self.assertIn(
+            self.note.reads._get_cache_key(value_type='history',
+                                           date=yesterday3),
+            caches[stats2_settings.CACHE_KEY])
 
-        # self.assertEqual(self.note.reads.total(), 6)
+        with self.assertNumQueries(1):
+            self.assertEqual(self.note.reads.total(), 6)
 
     # def test_get(self):
     #     pass

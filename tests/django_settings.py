@@ -126,9 +126,10 @@ STATIC_URL = '/static/'
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'django_stats2_tests',
     }
 }
 
 # Stats2
+STATS2_CACHE_KEY = 'default'
+STATS2_USE_CACHE = True
 STATS2_DDBB_DIRECT_INSERT = True

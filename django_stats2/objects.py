@@ -14,7 +14,7 @@ from django_stats2 import settings as stats2_settings
 class Stat(object):
     cache_key_prefix = stats2_settings.CACHE_PREFIX
     cache_key_format = {
-        'history': '{cache_key_prefix}:{prefix}:{name}:{pk}:{date}:history',
+        'history': '{cache_key_prefix}:{prefix}:{name}:{pk}:{date}',
         'total': '{cache_key_prefix}:{prefix}:{name}:{pk}:total',
     }
 
@@ -33,13 +33,15 @@ class Stat(object):
     def _get_cache_instance(self):
         """Returns a django cache object based on the settings configuration"""
         try:
-            cache = caches['stats2']
+            cache = caches[stats2_settings.CACHE_KEY]
         except InvalidCacheBackendError:
             cache = caches['default']
-        # TODO handle unconfigured caches
         return cache
 
     def _get_cache_key(self, value_type='total', date=None):
+        if isinstance(date, datetime):
+            date = date.date()
+
         return self.cache_key_format.get(value_type).format(
             cache_key_prefix=self.cache_key_prefix,
             prefix=self.model_instance.__class__.__name__.lower(),
@@ -85,6 +87,11 @@ class Stat(object):
             # Will get cached on get()
             pass
 
+    def _delete_cache(self, date=None):
+        value_type = 'history' if date else 'total'
+        cache_key = self._get_cache_key(value_type, date)
+        caches[stats2_settings.CACHE_KEY].delete(cache_key)
+
     # Database handlers
     def _get_model_queryset(self, date=timezone.now().date()):
         model_obj, created = ModelStat.objects.get_or_create(
@@ -107,7 +114,7 @@ class Stat(object):
 
             return stat or 0
 
-        if value_type == 'date':
+        if value_type == 'history':
             try:
                 stat_result = ModelStat.objects.get(
                     content_type_id=self.content_type.pk,
@@ -123,14 +130,11 @@ class Stat(object):
         return 0
 
     def _set_ddbb(self, date, value):
-        if not date:
-            date = datetime.utcnow()
-
         object_kwargs = {
             "content_type_id": self.content_type.pk,
             "object_id": self.object_id,
             "name": self.name,
-            "date": date.date(),
+            "date": date,
         }
 
         try:
@@ -141,7 +145,10 @@ class Stat(object):
         obj.value = value
         obj.save()
 
-        # TODO clear total if date is present
+        # Delete cache for this totals if a specified date is modified
+        # and database direct insert is present
+        if date and stats2_settings.DDBB_DIRECT_INSERT:
+            self._delete_cache()
 
     def _incr_ddbb(self, date, value):
         model = self._get_model_queryset(date)
@@ -169,10 +176,17 @@ class Stat(object):
     def get(self, date=None):
         return int(self._get_value(date=date))
 
+    def get_for_date(self, date):
+        return self.get(date)
+
+    def get_between_date(self, date_start, date_end):
+        assert date_start < date_end
+        return 0
+
     def total(self):
         return int(self._get_value())
 
-    def set(self, value, date=None):
+    def set(self, value, date=datetime.today()):
         if stats2_settings.USE_CACHE:
             self._set_cache(date=date, value=value)
         if stats2_settings.DDBB_DIRECT_INSERT:
@@ -201,7 +215,7 @@ class Stat(object):
         return self.model_instance.pk
 
     def __repr__(self):
-        return str(self._get_value())
+        return str(self.total())
 
     def __int__(self):
-        return self._get_value()
+        return self.total()
