@@ -129,3 +129,6 @@ CACHES = {
         'LOCATION': 'django_stats2_tests',
     }
 }
+
+# Stats2
+STATS2_DDBB_DIRECT_INSERT = True

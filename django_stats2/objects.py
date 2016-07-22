@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
+
 from django.db.models import Sum
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import caches
@@ -10,7 +12,7 @@ from django_stats2 import settings as stats2_settings
 
 
 class Stat(object):
-    cache_key_prefix = 'stats2'
+    cache_key_prefix = stats2_settings.CACHE_PREFIX
     cache_key_format = {
         'history': '{cache_key_prefix}:{prefix}:{name}:{pk}:{date}:history',
         'total': '{cache_key_prefix}:{prefix}:{name}:{pk}:total',
@@ -53,7 +55,6 @@ class Stat(object):
     def _set_cache(self, value_type='total', date=None, value=0):
         cache_key = self._get_cache_key(value_type, date)
         self.cache.set(cache_key, value)
-        return value
 
     def _incr_cache(self, date, value):
         cache_key_history = self._get_cache_key('history', date)
@@ -104,7 +105,43 @@ class Stat(object):
             ).aggregate(Sum('value'))
             stat = stat_result.get('value_sum')
 
-        return stat or 0
+            return stat or 0
+
+        if value_type == 'date':
+            try:
+                stat_result = ModelStat.objects.get(
+                    content_type_id=self.content_type.pk,
+                    object_id=self.object_id,
+                    name=self.name,
+                    date=date
+                )
+                return stat_result.value
+            except ModelStat.DoesNotExist:
+                # Assume zero
+                pass
+
+        return 0
+
+    def _set_ddbb(self, date, value):
+        if not date:
+            date = datetime.utcnow()
+
+        object_kwargs = {
+            "content_type_id": self.content_type.pk,
+            "object_id": self.object_id,
+            "name": self.name,
+            "date": date.date(),
+        }
+
+        try:
+            obj = ModelStat.objects.get(**object_kwargs)
+        except ModelStat.DoesNotExist:
+            obj = ModelStat(**object_kwargs)
+
+        obj.value = value
+        obj.save()
+
+        # TODO clear total if date is present
 
     def _incr_ddbb(self, date, value):
         model = self._get_model_queryset(date)
@@ -115,21 +152,33 @@ class Stat(object):
         model.decr(value)
 
     # Globals
-    def _get_value(self, value_type='total', date=None):
+    def _get_value(self, date=None):
+        value_type = 'history' if date else 'total'
         cache_value = self._get_cache(value_type, date)
 
         # If we don't have a cache value we must retireve it from the ddbb
         if cache_value is None:
             ddbb_value = self._get_ddbb(value_type, date)
             # Store in cache for future access
-            cache_value = self._set_cache(
-                value_type, date, ddbb_value)
+            self._set_cache(value_type, date, ddbb_value)
+            cache_value = ddbb_value
 
         return cache_value
 
     # Public
-    def get(self):
+    def get(self, date=None):
+        return int(self._get_value(date=date))
+
+    def total(self):
         return int(self._get_value())
+
+    def set(self, value, date=None):
+        if stats2_settings.USE_CACHE:
+            self._set_cache(date=date, value=value)
+        if stats2_settings.DDBB_DIRECT_INSERT:
+            self._set_ddbb(date=date, value=value)
+
+        return value
 
     def incr(self, value=1, date=timezone.now().date()):
         if stats2_settings.USE_CACHE:
