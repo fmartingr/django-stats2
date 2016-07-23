@@ -148,11 +148,22 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         with self.assertNumQueries(1):
             self.assertEqual(self.note.reads.total(), 6)
 
-    # def test_get(self):
-    #     pass
+    def test_get_date(self):
+        yesterday = datetime.date.today()+datetime.timedelta(days=-1)
+        self.note.reads.set(10, date=yesterday)
 
-    # def test_get_date(self):
-    #     pass
+        with self.assertNumQueries(0):
+            self.assertEquals(
+                self.note.reads.get_for_date(yesterday),
+                10)
+
+        # Clear cache and try again to try get from ddbb
+        caches[stats2_settings.CACHE_KEY].clear()
+
+        with self.assertNumQueries(1):
+            self.assertEquals(
+                self.note.reads.get_for_date(yesterday),
+                10)
 
     # def test_get_between(self):
     #     pass
