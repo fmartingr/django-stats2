@@ -110,7 +110,7 @@ class Stat(object):
                 object_id=self.object_id,
                 name=self.name,
             ).aggregate(Sum('value'))
-            stat = stat_result.get('value_sum')
+            stat = stat_result.get('value__sum')
 
             return stat or 0
 
@@ -145,11 +145,6 @@ class Stat(object):
         obj.value = value
         obj.save()
 
-        # Delete cache for this totals if a specified date is modified
-        # and database direct insert is present
-        if date and stats2_settings.DDBB_DIRECT_INSERT:
-            self._delete_cache()
-
     def _incr_ddbb(self, date, value):
         model = self._get_model_queryset(date)
         model.incr(value)
@@ -166,11 +161,28 @@ class Stat(object):
         # If we don't have a cache value we must retireve it from the ddbb
         if cache_value is None:
             ddbb_value = self._get_ddbb(value_type, date)
+
             # Store in cache for future access
             self._set_cache(value_type, date, ddbb_value)
             cache_value = ddbb_value
 
         return cache_value
+
+    def _set_value(self, value, date=None):
+        value_type = 'history' if date else 'total'
+
+        if stats2_settings.USE_CACHE:
+            self._set_cache(value_type=value_type, date=date, value=value)
+
+        if stats2_settings.DDBB_DIRECT_INSERT:
+            self._set_ddbb(date=date, value=value)
+
+        # Delete cache for this totals if a specified date is modified
+        # and database direct insert is present
+        if date and stats2_settings.DDBB_DIRECT_INSERT:
+            self._delete_cache()
+
+        return value
 
     # Public
     def get(self, date=None):
@@ -187,12 +199,7 @@ class Stat(object):
         return int(self._get_value())
 
     def set(self, value, date=datetime.today()):
-        if stats2_settings.USE_CACHE:
-            self._set_cache(date=date, value=value)
-        if stats2_settings.DDBB_DIRECT_INSERT:
-            self._set_ddbb(date=date, value=value)
-
-        return value
+        return self._set_value(value, date)
 
     def incr(self, value=1, date=timezone.now().date()):
         if stats2_settings.USE_CACHE:

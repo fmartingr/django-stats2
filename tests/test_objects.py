@@ -56,6 +56,8 @@ class StatCacheTestCase(TransactionTestCase):
 
 
 class StatOperationsBaseTestCase(TransactionTestCase):
+    queries_per_set = 3
+
     def setUp(self):
         self.note = Note.objects.create(title='Title', content='Content')
 
@@ -100,9 +102,13 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         self.assertEquals(ModelStat.objects.count(), 2)
 
     def test_set(self):
-        self.note.reads.set(10)
+        with self.assertNumQueries(self.queries_per_set):
+            self.note.reads.set(10)
+
         self.assertEqual(
-            caches[stats2_settings.CACHE_KEY].get(self.note.reads._get_cache_key()),
+            caches[stats2_settings.CACHE_KEY].get(
+                self.note.reads._get_cache_key('history',
+                                               datetime.date.today())),
             10)
 
     def test_set_date(self):
@@ -110,18 +116,18 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         today = datetime.datetime.utcnow()
 
         self.note.reads.set(10, date=yesterday)
-        self.assertEqual(self.note.reads, 10)
+        self.assertEqual(self.note.reads.get(), 10)
         self.assertEqual(self.note.reads.get(date=today), 0)
         self.assertEqual(
             caches[stats2_settings.CACHE_KEY].get(self.note.reads._get_cache_key(date=today)),
             10)
 
     def test_get_total(self):
-        yesterday = datetime.datetime.utcnow()+datetime.timedelta(days=-1)
-        yesterday2 = datetime.datetime.utcnow()+datetime.timedelta(days=-2)
-        yesterday3 = datetime.datetime.utcnow()+datetime.timedelta(days=-3)
+        yesterday = datetime.date.today()+datetime.timedelta(days=-1)
+        yesterday2 = datetime.date.today()+datetime.timedelta(days=-2)
+        yesterday3 = datetime.date.today()+datetime.timedelta(days=-3)
 
-        with self.assertNumQueries(3*3):
+        with self.assertNumQueries(self.queries_per_set*3):
             self.note.reads.set(date=yesterday, value=1)
             self.note.reads.set(date=yesterday2, value=2)
             self.note.reads.set(date=yesterday3, value=3)
