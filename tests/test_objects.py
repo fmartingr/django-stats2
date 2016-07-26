@@ -193,3 +193,10 @@ class StatOperationsBaseTestCase(TransactionTestCase):
             datetime.date.today() + datetime.timedelta(days=-1)
         )
         self.assertEqual(four_days, 4)
+
+    def test_store(self):
+        day = datetime.date.today()
+        self.note.reads.store(3, date=day)
+
+        with self.assertNumQueries(1):
+            self.assertEquals(self.note.reads.get(date=day), 3)

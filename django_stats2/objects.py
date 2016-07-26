@@ -251,6 +251,9 @@ class Stat(object):
         if stats2_settings.DDBB_DIRECT_INSERT:
             self._decr_ddbb(date, value)
 
+    def store(self, value, date=datetime.now().date()):
+        return self._set_ddbb(date, value)
+
     @property
     def object_id(self):
         """
