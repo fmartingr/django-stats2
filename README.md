@@ -12,7 +12,7 @@ Easily create custom stats for your models.
 ## Installation
 
 ```
-pip install git+https://github.com/fmartingr/django-stats2.git#egg=django_stats2
+pip install django_stats2
 ```
 
 ## Configuration
@@ -31,24 +31,53 @@ class MyModel(StatsMixin, models.Model):
      read_count = StatField()
 ```
 
+## Settings
+``` python
+# Prefix for the cache keys
+CACHE_PREFIX = 'stats2'
+
+# Cache key from settings.CACHES
+CACHE_KEY = 'default'
+
+# Cache-Database interaction
+# Can't be the same setting, if cache is disabled, database direct
+# insert should be enabled (otherwise your stats would't be stored!)
+USE_CACHE = True
+
+DDBB_DIRECT_INSERT = False
+
+# Cache timeouts for the key types
+# Cache timeout for the totals
+CACHE_TIMEOUT_TOTAL = None
+
+# Cache timeout for a certain date
+CACHE_TIMEOUT_HISTORY = None
+
+# Cache timeout for between dates
+CACHE_TIMEOUT_BETWEEN = 60*60*24
+
+```
+
+> **NOTE ON CACHES:** While stats2 does it's own cache removal, the `between` cache key can't be invalidated due to the app architecture and django limitations, so keep in mind that if the `CACHE_TIMEOUT_BETWEEN` is `None` those keys will **never be invalidated**.
+
 ## Usage
 
 ``` python
-from datetime import datetime
+from datetime import date
 from myapp.models import MyModel
 
 obj = MyModel.objects.first()
 
 # Now we can access the Stat using
-obj.read_count
-obj.read_count.total()  # Same as before
-obj.read_count.for_date(date)  # For a current date
-obj.read_count.between_date(date_start, date_end)  # Between two dates
-obj.read_count.incr(amount=1, date=datetime.now())  # Increment stat by amount
-obj.read_count.decr(amount=1, date=datetime.now())  # Decrement stat by amount
-obj.read_count.set(amount=1, date=datetime.now())  # Set a fixed amount
-obj.read_count.store(date=datetime.now())  # Force store value in database
-obj.read_count.flush_cache()  # Removes all cache for stat
+obj.read_count # Returns str(stat)
+obj.read_count.get([date]) # Returns int stat, returns total if date not present
+obj.read_count.total()  # Same as before but returns int
+obj.read_count.get_for_date(date)  # Return stat for a current date (same as .get(date))
+obj.read_count.get_between_date(date_start, date_end)  # Between two dates
+obj.read_count.incr(value=1, date=date.today())  # Increment stat by amount
+obj.read_count.decr(value=1, date=date.today())  # Decrement stat by amount
+obj.read_count.set(value=1, date=date.today())  # Set a fixed amount
+obj.read_count.store(value=1, date=date.today())  # Force store value in database
 ```
 
 # Contribute
