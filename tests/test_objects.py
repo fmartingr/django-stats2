@@ -2,6 +2,7 @@ import datetime
 from unittest import TestCase
 
 from django.core.cache import caches
+from django.test import override_settings
 from django.test.testcases import TransactionTestCase
 
 from django_stats2 import settings as stats2_settings
@@ -165,5 +166,30 @@ class StatOperationsBaseTestCase(TransactionTestCase):
                 self.note.reads.get_for_date(yesterday),
                 10)
 
-    # def test_get_between(self):
-    #     pass
+    def test_get_between(self):
+        # Fill the past 5 days
+        for i in range(1, 6):
+            day = datetime.date.today() + datetime.timedelta(days=i*-1)
+            self.note.reads.set(date=day, value=1)
+
+        with self.assertNumQueries(1):
+            two_days = self.note.reads.get_between_date(
+                datetime.date.today() + datetime.timedelta(days=-2),
+                datetime.date.today() + datetime.timedelta(days=-1)
+            )
+
+        # Test cache
+        with self.assertNumQueries(0):
+            two_days = self.note.reads.get_between_date(
+                datetime.date.today() + datetime.timedelta(days=-2),
+                datetime.date.today() + datetime.timedelta(days=-1)
+            )
+
+        # Assert result
+        self.assertEqual(two_days, 2)
+
+        four_days = self.note.reads.get_between_date(
+            datetime.date.today() + datetime.timedelta(days=-4),
+            datetime.date.today() + datetime.timedelta(days=-1)
+        )
+        self.assertEqual(four_days, 4)

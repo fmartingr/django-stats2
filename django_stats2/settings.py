@@ -16,3 +16,14 @@ USE_CACHE = getattr(settings, 'STATS2_USE_CACHE', True)
 DDBB_DIRECT_INSERT = getattr(settings,
                              'STATS2_DDBB_DIRECT_INSERT',
                              not USE_CACHE)
+
+# Cache timeouts
+CACHE_TIMEOUT_TOTAL = getattr(settings,
+                              'STATS2_CACHE_TIMEOUT_TOTAL',
+                              None)
+CACHE_TIMEOUT_HISTORY = getattr(settings,
+                                'STATS2_CACHE_TIMEOUT_HISTORY',
+                                None)
+CACHE_TIMEOUT_BETWEEN = getattr(settings,
+                                'STATS2_CACHE_TIMEOUT_BETWEEN',
+                                60*60*24)

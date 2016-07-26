@@ -16,6 +16,7 @@ class Stat(object):
     cache_key_format = {
         'history': '{cache_key_prefix}:{prefix}:{name}:{pk}:{date}',
         'total': '{cache_key_prefix}:{prefix}:{name}:{pk}:total',
+        'between': '{cache_key_prefix}:{prefix}:{name}:{pk}:{date}_{date_end}',
     }
 
     def __init__(self, name, model_instance):
@@ -38,25 +39,31 @@ class Stat(object):
             cache = caches['default']
         return cache
 
-    def _get_cache_key(self, value_type='total', date=None):
+    def _get_cache_key(self, value_type='total', date=None, date_end=None):
         if isinstance(date, datetime):
             date = date.date()
+
+        if isinstance(date_end, datetime):
+            date_end = date_end.date()
 
         return self.cache_key_format.get(value_type).format(
             cache_key_prefix=self.cache_key_prefix,
             prefix=self.model_instance.__class__.__name__.lower(),
             name=self.name,
             pk=self.object_id,
-            date=date
-        )
+            date=date,
+            date_end=date_end)
 
-    def _get_cache(self, value_type='total', date=None):
-        cache_key = self._get_cache_key(value_type, date)
+    def _get_cache(self, value_type='total', date=None, date_end=None):
+        cache_key = self._get_cache_key(value_type, date, date_end)
         return self.cache.get(cache_key)
 
-    def _set_cache(self, value_type='total', date=None, value=0):
-        cache_key = self._get_cache_key(value_type, date)
-        self.cache.set(cache_key, value)
+    def _set_cache(self, value_type='total', date=None, value=0, date_end=None):
+        cache_key = self._get_cache_key(value_type, date, date_end)
+        timeout = getattr(stats2_settings,
+                          'CACHE_TIMEOUT_{}'.format(value_type),
+                          None)
+        self.cache.set(cache_key, value, timeout=timeout)
 
     def _incr_cache(self, date, value):
         cache_key_history = self._get_cache_key('history', date)
@@ -129,6 +136,23 @@ class Stat(object):
 
         return 0
 
+    def _get_ddbb_between(self, date_start, date_end):
+        try:
+            stat_result = ModelStat.objects.filter(
+                content_type_id=self.content_type.pk,
+                object_id=self.object_id,
+                name=self.name,
+                date__gte=date_start,
+                date__lte=date_end,
+            ).aggregate(Sum('value'))
+            stat = stat_result.get('value__sum')
+            return stat
+        except ModelStat.DoesNotExist:
+            # Assume zero
+            pass
+
+        return 0
+
     def _set_ddbb(self, date, value):
         object_kwargs = {
             "content_type_id": self.content_type.pk,
@@ -168,6 +192,20 @@ class Stat(object):
 
         return cache_value
 
+    def _get_between(self, date_start, date_end):
+        cache_value = self._get_cache('between', date_start, date_end)
+
+        # If we don't have the cache value we retrieve it from the ddbb
+        if cache_value is None:
+            ddbb_value = self._get_ddbb_between(date_start, date_end)
+
+            # Store in cache for future access
+            self._set_cache('between', date_start,
+                            date_end=date_end, value=ddbb_value)
+            cache_value = ddbb_value
+
+        return cache_value
+
     def _set_value(self, value, date=None):
         value_type = 'history' if date else 'total'
 
@@ -192,8 +230,8 @@ class Stat(object):
         return self.get(date)
 
     def get_between_date(self, date_start, date_end):
-        assert date_start < date_end
-        return 0
+        assert date_start < date_end, "Start date must be before end date."
+        return self._get_between(date_start, date_end)
 
     def total(self):
         return int(self._get_value())
