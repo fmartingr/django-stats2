@@ -61,7 +61,7 @@ class Stat(object):
     def _set_cache(self, value_type='total', date=None, value=0, date_end=None):
         cache_key = self._get_cache_key(value_type, date, date_end)
         timeout = getattr(stats2_settings,
-                          'CACHE_TIMEOUT_{}'.format(value_type),
+                          'CACHE_TIMEOUT_{}'.format(value_type).upper(),
                           None)
         self.cache.set(cache_key, value, timeout=timeout)
 
