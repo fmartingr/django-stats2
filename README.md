@@ -34,27 +34,27 @@ class MyModel(StatsMixin, models.Model):
 ## Settings
 ``` python
 # Prefix for the cache keys
-CACHE_PREFIX = 'stats2'
+STATS2_CACHE_PREFIX = 'stats2'
 
 # Cache key from settings.CACHES
-CACHE_KEY = 'default'
+STATS2_CACHE_KEY = 'default'
 
 # Cache-Database interaction
 # Can't be the same setting, if cache is disabled, database direct
 # insert should be enabled (otherwise your stats would't be stored!)
-USE_CACHE = True
+STATS2_USE_CACHE = True
 
-DDBB_DIRECT_INSERT = False
+STATS2_DDBB_DIRECT_INSERT = False
 
 # Cache timeouts for the key types
 # Cache timeout for the totals
-CACHE_TIMEOUT_TOTAL = None
+STATS2_CACHE_TIMEOUT_TOTAL = None
 
 # Cache timeout for a certain date
-CACHE_TIMEOUT_HISTORY = None
+STATS2_CACHE_TIMEOUT_HISTORY = None
 
 # Cache timeout for between dates
-CACHE_TIMEOUT_BETWEEN = 60*60*24
+STATS2_CACHE_TIMEOUT_BETWEEN = 60*60*24
 
 ```
 
