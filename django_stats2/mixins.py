@@ -7,8 +7,16 @@ class StatsMixin(object):
     Allows a Django model to have some :class:`django_stats2.fields.StatField`
     assigned as attributes.
     """
+    def get_stat_fields(self):
+        stat_fields = []
+        model = type(self)
+        for key, value in model.__dict__.items():
+            if isinstance(value, StatField):
+                stat_fields.append(key)
+        return stat_fields
+
     def _update_stat_fields(self):
-        for key in dir(self):
+        for key in self.get_stat_fields():
             try:
                 attr = getattr(self, key)
                 if isinstance(attr, StatField):
