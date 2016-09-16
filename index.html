@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Django-stats2 by fmartingr</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Django-stats2</h1>
+        <p>Statistics for your models</p>
+
+        <p class="view"><a href="https://github.com/fmartingr/django-stats2">View the Project on GitHub <small>fmartingr/django-stats2</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/fmartingr/django-stats2/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/fmartingr/django-stats2/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/fmartingr/django-stats2">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="django-stats2" class="anchor" href="#django-stats2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>django-stats2</h1>
+
+<p><a href="https://travis-ci.org/fmartingr/django-stats2"><img src="https://travis-ci.org/fmartingr/django-stats2.svg?branch=master" alt="Build Status"></a></p>
+
+<p>Easily create custom stats for your models.</p>
+
+<blockquote>
+<p><strong>NOTE</strong> Development not finished.</p>
+</blockquote>
+
+<h1>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h1>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
+
+<pre><code>pip install django_stats2
+</code></pre>
+
+<h2>
+<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Configuration</h2>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-c"># models.py</span>
+<span class="pl-k">from</span> django.db <span class="pl-k">import</span> models
+
+<span class="pl-k">from</span> django_stats2.mixins <span class="pl-k">import</span> StatsMixin
+<span class="pl-k">from</span> django_stats2.fields <span class="pl-k">import</span> StatField
+
+
+<span class="pl-k">class</span> <span class="pl-en">MyModel</span>(<span class="pl-e">StatsMixin</span>, <span class="pl-e">models</span>.<span class="pl-e">Model</span>):
+     <span class="pl-c"># ... your fields here</span>
+
+     read_count <span class="pl-k">=</span> StatField()</pre></div>
+
+<h2>
+<a id="settings" class="anchor" href="#settings" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Settings</h2>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-c"># Prefix for the cache keys</span>
+<span class="pl-c1">STATS2_CACHE_PREFIX</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">'</span>stats2<span class="pl-pds">'</span></span>
+
+<span class="pl-c"># Cache key from settings.CACHES</span>
+<span class="pl-c1">STATS2_CACHE_KEY</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">'</span>default<span class="pl-pds">'</span></span>
+
+<span class="pl-c"># Cache-Database interaction</span>
+<span class="pl-c"># Can't be the same setting, if cache is disabled, database direct</span>
+<span class="pl-c"># insert should be enabled (otherwise your stats would't be stored!)</span>
+<span class="pl-c1">STATS2_USE_CACHE</span> <span class="pl-k">=</span> <span class="pl-c1">True</span>
+
+<span class="pl-c1">STATS2_DDBB_DIRECT_INSERT</span> <span class="pl-k">=</span> <span class="pl-c1">False</span>
+
+<span class="pl-c"># Cache timeouts for the key types</span>
+<span class="pl-c"># Cache timeout for the totals</span>
+<span class="pl-c1">STATS2_CACHE_TIMEOUT_TOTAL</span> <span class="pl-k">=</span> <span class="pl-c1">None</span>
+
+<span class="pl-c"># Cache timeout for a certain date</span>
+<span class="pl-c1">STATS2_CACHE_TIMEOUT_HISTORY</span> <span class="pl-k">=</span> <span class="pl-c1">None</span>
+
+<span class="pl-c"># Cache timeout for between dates</span>
+<span class="pl-c1">STATS2_CACHE_TIMEOUT_BETWEEN</span> <span class="pl-k">=</span> <span class="pl-c1">60</span><span class="pl-k">*</span><span class="pl-c1">60</span><span class="pl-k">*</span><span class="pl-c1">24</span>
+</pre></div>
+
+<blockquote>
+<p><strong>NOTE ON CACHES:</strong> While stats2 does it's own cache removal, the <code>between</code> cache key can't be invalidated due to the app architecture and django limitations, so keep in mind that if the <code>CACHE_TIMEOUT_BETWEEN</code> is <code>None</code> those keys will <strong>never be invalidated</strong>.</p>
+</blockquote>
+
+<h2>
+<a id="usage-1" class="anchor" href="#usage-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> datetime <span class="pl-k">import</span> date
+<span class="pl-k">from</span> myapp.models <span class="pl-k">import</span> MyModel
+
+obj <span class="pl-k">=</span> MyModel.objects.first()
+
+<span class="pl-c"># Now we can access the Stat using</span>
+obj.read_count <span class="pl-c"># Returns str(stat)</span>
+obj.read_count.get([date]) <span class="pl-c"># Returns int stat, returns total if date not present</span>
+obj.read_count.total()  <span class="pl-c"># Same as before but returns int</span>
+obj.read_count.get_for_date(date)  <span class="pl-c"># Return stat for a current date (same as .get(date))</span>
+obj.read_count.get_between_date(date_start, date_end)  <span class="pl-c"># Between two dates</span>
+obj.read_count.incr(<span class="pl-v">value</span><span class="pl-k">=</span><span class="pl-c1">1</span>, <span class="pl-v">date</span><span class="pl-k">=</span>date.today())  <span class="pl-c"># Increment stat by amount</span>
+obj.read_count.decr(<span class="pl-v">value</span><span class="pl-k">=</span><span class="pl-c1">1</span>, <span class="pl-v">date</span><span class="pl-k">=</span>date.today())  <span class="pl-c"># Decrement stat by amount</span>
+obj.read_count.set(<span class="pl-v">value</span><span class="pl-k">=</span><span class="pl-c1">1</span>, <span class="pl-v">date</span><span class="pl-k">=</span>date.today())  <span class="pl-c"># Set a fixed amount</span>
+obj.read_count.store(<span class="pl-v">value</span><span class="pl-k">=</span><span class="pl-c1">1</span>, <span class="pl-v">date</span><span class="pl-k">=</span>date.today())  <span class="pl-c"># Force store value in database</span></pre></div>
+
+<h1>
+<a id="contribute" class="anchor" href="#contribute" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Contribute</h1>
+
+<p>The project provides a sample project to play with the stats2 app, just create a virtualenv, install django and start coding.</p>
+
+<pre><code>virtualenv -p python3.5 .virtualenv
+source .virtualenv/bin/activate
+pip install django
+cd sampleproject
+</code></pre>
+
+<h1>
+<a id="tests" class="anchor" href="#tests" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Tests</h1>
+
+<p><code>tox</code> is used to perform test on different platforms, just install <code>tox</code> and run the command.</p>
+
+<p>Keep in mind that this create virtualenv for different python versions, you need to have all the interpreters available to perform the tests on the entire depencency environments.</p>
+
+<pre><code>pip install tox
+tox
+</code></pre>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/fmartingr">fmartingr</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
