@@ -5,8 +5,6 @@ django-stats2
 
 Easily create custom stats for your models.
 
-> **NOTE** Development not finished.
-
 # Usage
 
 ## Installation
