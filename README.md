@@ -17,6 +17,8 @@ pip install django_stats2
 
 ## Configuration
 
+
+### Model stats
 ``` python
 # models.py
 from django.db import models
@@ -29,6 +31,14 @@ class MyModel(StatsMixin, models.Model):
      # ... your fields here
 
      read_count = StatField()
+```
+
+### Global stats
+
+``` python
+from django_stats2.objects import Stat
+
+stat = Stat(name='total_visits')
 ```
 
 ## Settings
@@ -68,16 +78,20 @@ from myapp.models import MyModel
 
 obj = MyModel.objects.first()
 
+stat = obj.read_count
+# or
+stat = Stat(name='total_visits')
+
 # Now we can access the Stat using
-obj.read_count # Returns str(stat)
-obj.read_count.get([date]) # Returns int stat, returns total if date not present
-obj.read_count.total()  # Same as before but returns int
-obj.read_count.get_for_date(date)  # Return stat for a current date (same as .get(date))
-obj.read_count.get_between_date(date_start, date_end)  # Between two dates
-obj.read_count.incr(value=1, date=date.today())  # Increment stat by amount
-obj.read_count.decr(value=1, date=date.today())  # Decrement stat by amount
-obj.read_count.set(value=1, date=date.today())  # Set a fixed amount
-obj.read_count.store(value=1, date=date.today())  # Force store value in database
+stat # Returns str(stat)
+stat.get([date]) # Returns int stat, returns total if date not present
+stat.total()  # Same as before but returns int
+stat.get_for_date(date)  # Return stat for a current date (same as .get(date))
+stat.get_between_date(date_start, date_end)  # Between two dates
+stat.incr(value=1, date=date.today())  # Increment stat by amount
+stat.decr(value=1, date=date.today())  # Decrement stat by amount
+stat.set(value=1, date=date.today())  # Set a fixed amount
+stat.store(value=1, date=date.today())  # Force store value in database
 ```
 
 # Contribute
@@ -85,7 +99,7 @@ obj.read_count.store(value=1, date=date.today())  # Force store value in databas
 The project provides a sample project to play with the stats2 app, just create a virtualenv, install django and start coding.
 
 ```
-virtualenv -p python3.5 .virtualenv
+python3 -m venv .virtualenv
 source .virtualenv/bin/activate
 pip install django
 cd sampleproject

@@ -19,7 +19,7 @@ class Stat(object):
         'between': '{cache_key_prefix}:{prefix}:{name}:{pk}:{date}_{date_end}',
     }
 
-    def __init__(self, name, model_instance):
+    def __init__(self, name, model_instance=None):
         """
         Setup the base fields for the stat to work properly and the cache
         connection to store the data.
@@ -27,8 +27,9 @@ class Stat(object):
         self.cache = self._get_cache_instance()
         self.name = name
         self.model_instance = model_instance
-        self.content_type = ContentType.objects.get_for_model(
-            self.model_instance)
+        if self.model_instance:
+            self.content_type = ContentType.objects.get_for_model(
+                self.model_instance)
 
     # Cache handling
     def _get_cache_instance(self):
@@ -39,6 +40,16 @@ class Stat(object):
             cache = caches['default']
         return cache
 
+    def _get_stat_prefix(self):
+        """
+        Return the stat prefix for the cache key
+        - Return the lowercase class name for models
+        - '_global' otherwise
+        """
+        if self.model_instance:
+            return self.model_instance.__class__.__name__.lower()
+        return '_global'
+
     def _get_cache_key(self, value_type='total', date=None, date_end=None):
         if isinstance(date, datetime):
             date = date.date()
@@ -48,9 +59,9 @@ class Stat(object):
 
         return self.cache_key_format.get(value_type).format(
             cache_key_prefix=self.cache_key_prefix,
-            prefix=self.model_instance.__class__.__name__.lower(),
+            prefix=self._get_stat_prefix(),
             name=self.name,
-            pk=self.object_id,
+            pk=self.object_id or '',
             date=date,
             date_end=date_end)
 
@@ -58,7 +69,7 @@ class Stat(object):
         cache_key = self._get_cache_key(value_type, date, date_end)
         return self.cache.get(cache_key)
 
-    def _set_cache(self, value_type='total', date=None, value=0, date_end=None):
+    def _set_cache(self, value_type='total', date=None, value=0, date_end=None):  # noqa
         cache_key = self._get_cache_key(value_type, date, date_end)
         timeout = getattr(stats2_settings,
                           'CACHE_TIMEOUT_{}'.format(value_type).upper(),
@@ -100,22 +111,36 @@ class Stat(object):
         caches[stats2_settings.CACHE_KEY].delete(cache_key)
 
     # Database handlers
+    def _get_manager_kwargs(self, date=None):
+        """Returns kwargs to filter ModelStat by Stat type"""
+        if self.model_instance:
+            manager_kwargs = {
+                'content_type_id': self.content_type.pk,
+                'object_id': self.object_id,
+                'name': self.name
+            }
+        else:
+            manager_kwargs = {
+                'name': self.name
+            }
+
+        if date:
+            manager_kwargs['date'] = date
+
+        return manager_kwargs
+
     def _get_model_queryset(self, date=timezone.now().date()):
-        model_obj, created = ModelStat.objects.get_or_create(
-            content_type_id=self.content_type.pk,
-            object_id=self.object_id,
-            date=date,
-            name=self.name
-        )
+        """Returns the ModelStat queryset for this Stat"""
+        manager_kwargs = self._get_manager_kwargs(date)
+
+        model_obj, created = ModelStat.objects.get_or_create(**manager_kwargs)
 
         return model_obj
 
     def _get_ddbb(self, value_type='total', date=None):
         if value_type == 'total':
             stat_result = ModelStat.objects.filter(
-                content_type_id=self.content_type.pk,
-                object_id=self.object_id,
-                name=self.name,
+                **self._get_manager_kwargs()
             ).aggregate(Sum('value'))
             stat = stat_result.get('value__sum')
 
@@ -124,10 +149,7 @@ class Stat(object):
         if value_type == 'history':
             try:
                 stat_result = ModelStat.objects.get(
-                    content_type_id=self.content_type.pk,
-                    object_id=self.object_id,
-                    name=self.name,
-                    date=date
+                    **self._get_manager_kwargs(date)
                 )
                 return stat_result.value
             except ModelStat.DoesNotExist:
@@ -139,11 +161,9 @@ class Stat(object):
     def _get_ddbb_between(self, date_start, date_end):
         try:
             stat_result = ModelStat.objects.filter(
-                content_type_id=self.content_type.pk,
-                object_id=self.object_id,
-                name=self.name,
                 date__gte=date_start,
                 date__lte=date_end,
+                **self._get_manager_kwargs()
             ).aggregate(Sum('value'))
             stat = stat_result.get('value__sum')
             return stat
@@ -154,12 +174,7 @@ class Stat(object):
         return 0
 
     def _set_ddbb(self, date, value):
-        object_kwargs = {
-            "content_type_id": self.content_type.pk,
-            "object_id": self.object_id,
-            "name": self.name,
-            "date": date,
-        }
+        object_kwargs = self._get_manager_kwargs(date)
 
         try:
             obj = ModelStat.objects.get(**object_kwargs)
@@ -260,7 +275,9 @@ class Stat(object):
         :returns: Model instance primary key
         :rtype: int
         """
-        return self.model_instance.pk
+        if self.model_instance:
+            return self.model_instance.pk
+        return None
 
     def __repr__(self):
         return str(self.total())

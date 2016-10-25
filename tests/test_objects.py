@@ -2,16 +2,26 @@ import datetime
 from unittest import TestCase
 
 from django.core.cache import caches
-from django.test import override_settings
 from django.test.testcases import TransactionTestCase
 
 from django_stats2 import settings as stats2_settings
+from django_stats2.objects import Stat
 from django_stats2.models import ModelStat
 
 from .models import Note
 
 
-class StatTotalsTestCase(TestCase):
+class StatTestCase(TestCase):
+    def setUp(self):
+        self.stat = Stat(name='total_visits')
+        self.note = Note.objects.create(title='Title', content='Content')
+
+    def test_stat_prefix_is_correct(self):
+        self.assertEqual(self.stat._get_stat_prefix(), '_global')
+        self.assertEqual(self.note.reads._get_stat_prefix(), 'note')
+
+
+class ModelStatTotalsTestCase(TestCase):
     def setUp(self):
         self.note = Note.objects.create(title='Title', content='content')
 
@@ -29,7 +39,7 @@ class StatTotalsTestCase(TestCase):
         self.assertEquals(ModelStat.objects.count(), 0)
 
 
-class StatCacheTestCase(TransactionTestCase):
+class ModelStatCacheTestCase(TransactionTestCase):
     def setUp(self):
         self.note = Note.objects.create(title='Title', content='Content')
 
@@ -56,59 +66,49 @@ class StatCacheTestCase(TransactionTestCase):
         self.assertEquals(stat, stat2)
 
 
-class StatOperationsBaseTestCase(TransactionTestCase):
-    queries_per_set = 3
-
-    def setUp(self):
-        self.note = Note.objects.create(title='Title', content='Content')
-
-    def tearDown(self):
-        self.note.delete()
-        ModelStat.objects.all().delete()
-        caches[stats2_settings.CACHE_KEY].clear()
-
+class StatOperationsBase:
     def test_incr(self):
-        stat = self.note.reads.get()
+        stat = self.stat.get()
 
-        self.note.reads.incr()
-        self.assertEquals(stat+1, self.note.reads.get())
+        self.stat.incr()
+        self.assertEquals(stat+1, self.stat.get())
 
-        self.note.reads.incr(2)
-        self.assertEquals(stat+3, self.note.reads.get())
+        self.stat.incr(2)
+        self.assertEquals(stat+3, self.stat.get())
 
         self.assertEquals(ModelStat.objects.first().value, 3)
 
     def test_incr_date(self):
-        self.note.reads.incr()
-        self.note.reads.incr(
+        self.stat.incr()
+        self.stat.incr(
             date=datetime.datetime.now()+datetime.timedelta(days=-1))
         self.assertEquals(ModelStat.objects.count(), 2)
 
     def test_decr(self):
-        stat = self.note.reads.get()
+        stat = self.stat.get()
 
-        self.note.reads.decr()
-        self.assertEquals(stat-1, self.note.reads.get())
+        self.stat.decr()
+        self.assertEquals(stat-1, self.stat.get())
 
-        self.note.reads.decr(2)
-        self.assertEquals(stat-3, self.note.reads.get())
+        self.stat.decr(2)
+        self.assertEquals(stat-3, self.stat.get())
 
         self.assertEquals(ModelStat.objects.first().value, -3)
 
     def test_decr_date(self):
-        self.note.reads.decr()
-        self.note.reads.decr(
+        self.stat.decr()
+        self.stat.decr(
             date=datetime.datetime.now()+datetime.timedelta(days=-1))
 
         self.assertEquals(ModelStat.objects.count(), 2)
 
     def test_set(self):
         with self.assertNumQueries(self.queries_per_set):
-            self.note.reads.set(10)
+            self.stat.set(10)
 
         self.assertEqual(
             caches[stats2_settings.CACHE_KEY].get(
-                self.note.reads._get_cache_key('history',
+                self.stat._get_cache_key('history',
                                                datetime.date.today())),
             10)
 
@@ -116,11 +116,11 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         yesterday = datetime.datetime.utcnow()+datetime.timedelta(days=-1)
         today = datetime.datetime.utcnow()
 
-        self.note.reads.set(10, date=yesterday)
-        self.assertEqual(self.note.reads.get(), 10)
-        self.assertEqual(self.note.reads.get(date=today), 0)
+        self.stat.set(10, date=yesterday)
+        self.assertEqual(self.stat.get(), 10)
+        self.assertEqual(self.stat.get(date=today), 0)
         self.assertEqual(
-            caches[stats2_settings.CACHE_KEY].get(self.note.reads._get_cache_key(date=today)),
+            caches[stats2_settings.CACHE_KEY].get(self.stat._get_cache_key(date=today)),
             10)
 
     def test_get_total(self):
@@ -129,33 +129,33 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         yesterday3 = datetime.date.today()+datetime.timedelta(days=-3)
 
         with self.assertNumQueries(self.queries_per_set*3):
-            self.note.reads.set(date=yesterday, value=1)
-            self.note.reads.set(date=yesterday2, value=2)
-            self.note.reads.set(date=yesterday3, value=3)
+            self.stat.set(date=yesterday, value=1)
+            self.stat.set(date=yesterday2, value=2)
+            self.stat.set(date=yesterday3, value=3)
 
         self.assertIn(
-            self.note.reads._get_cache_key(value_type='history',
+            self.stat._get_cache_key(value_type='history',
                                            date=yesterday),
             caches[stats2_settings.CACHE_KEY])
         self.assertIn(
-            self.note.reads._get_cache_key(value_type='history',
+            self.stat._get_cache_key(value_type='history',
                                            date=yesterday2),
             caches[stats2_settings.CACHE_KEY])
         self.assertIn(
-            self.note.reads._get_cache_key(value_type='history',
+            self.stat._get_cache_key(value_type='history',
                                            date=yesterday3),
             caches[stats2_settings.CACHE_KEY])
 
         with self.assertNumQueries(1):
-            self.assertEqual(self.note.reads.total(), 6)
+            self.assertEqual(self.stat.total(), 6)
 
     def test_get_date(self):
         yesterday = datetime.date.today()+datetime.timedelta(days=-1)
-        self.note.reads.set(10, date=yesterday)
+        self.stat.set(10, date=yesterday)
 
         with self.assertNumQueries(0):
             self.assertEquals(
-                self.note.reads.get_for_date(yesterday),
+                self.stat.get_for_date(yesterday),
                 10)
 
         # Clear cache and try again to try get from ddbb
@@ -163,24 +163,24 @@ class StatOperationsBaseTestCase(TransactionTestCase):
 
         with self.assertNumQueries(1):
             self.assertEquals(
-                self.note.reads.get_for_date(yesterday),
+                self.stat.get_for_date(yesterday),
                 10)
 
     def test_get_between(self):
         # Fill the past 5 days
         for i in range(1, 6):
             day = datetime.date.today() + datetime.timedelta(days=i*-1)
-            self.note.reads.set(date=day, value=1)
+            self.stat.set(date=day, value=1)
 
         with self.assertNumQueries(1):
-            two_days = self.note.reads.get_between_date(
+            two_days = self.stat.get_between_date(
                 datetime.date.today() + datetime.timedelta(days=-2),
                 datetime.date.today() + datetime.timedelta(days=-1)
             )
 
         # Test cache
         with self.assertNumQueries(0):
-            two_days = self.note.reads.get_between_date(
+            two_days = self.stat.get_between_date(
                 datetime.date.today() + datetime.timedelta(days=-2),
                 datetime.date.today() + datetime.timedelta(days=-1)
             )
@@ -188,7 +188,7 @@ class StatOperationsBaseTestCase(TransactionTestCase):
         # Assert result
         self.assertEqual(two_days, 2)
 
-        four_days = self.note.reads.get_between_date(
+        four_days = self.stat.get_between_date(
             datetime.date.today() + datetime.timedelta(days=-4),
             datetime.date.today() + datetime.timedelta(days=-1)
         )
@@ -196,7 +196,31 @@ class StatOperationsBaseTestCase(TransactionTestCase):
 
     def test_store(self):
         day = datetime.date.today()
-        self.note.reads.store(3, date=day)
+        self.stat.store(3, date=day)
 
         with self.assertNumQueries(1):
-            self.assertEquals(self.note.reads.get(date=day), 3)
+            self.assertEquals(self.stat.get(date=day), 3)
+
+
+class ModelStatOperationsTestCase(StatOperationsBase, TransactionTestCase):
+    queries_per_set = 3
+
+    def setUp(self):
+        self.note = Note.objects.create(title='Title', content='Content')
+        self.stat = self.note.reads
+
+    def tearDown(self):
+        self.note.delete()
+        ModelStat.objects.all().delete()
+        caches[stats2_settings.CACHE_KEY].clear()
+
+
+class GlobalStatOperationsTestCase(StatOperationsBase, TransactionTestCase):
+    queries_per_set = 3
+
+    def setUp(self):
+        self.stat = Stat(name='total_visits')
+
+    def tearDown(self):
+        ModelStat.objects.all().delete()
+        caches[stats2_settings.CACHE_KEY].clear()
