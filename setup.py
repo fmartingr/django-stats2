@@ -14,12 +14,12 @@ def get_version(package):
         init_py, re.MULTILINE).group(1)
 
 
-REPO = 'https://github.com/fmartingr/django_stats2'
+REPO = 'https://github.com/fmartingr/django-stats2'
 VERSION = get_version('django_stats2')
 
 if sys.argv[-1] == 'publish':
     os.system("python setup.py sdist upload")
-    args = {'version': VERSION }
+    args = {'version': VERSION}
     print("You probably want to also tag the version now:")
     print("  git tag -a %(version)s -m 'version %(version)s'" % args)
     print("  git push --tags")
@@ -27,14 +27,17 @@ if sys.argv[-1] == 'publish':
 
 
 setup(
-  name='django_stats2',
-  packages=['django_stats2'],
-  version=VERSION,
-  description='Easily create stats for your models',
-  author='Felipe Martin',
-  author_email='fmartingr@gmail.com',
-  url=REPO,
-  download_url='{}/tarball/{}'.format(REPO, VERSION),
-  keywords=['django', 'stats',],
-  classifiers=[],
+    name='django_stats2',
+    packages=[
+        'django_stats2',
+        'django_stats2/migrations',
+    ],
+    version=VERSION,
+    description='Easily create stats for your models',
+    author='Felipe Martin',
+    author_email='me@fmartingr.com',
+    url=REPO,
+    download_url='{}/tarball/{}'.format(REPO, VERSION),
+    keywords=['django', 'stats', ],
+    classifiers=[],
 )
