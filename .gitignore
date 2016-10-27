@@ -7,4 +7,5 @@ __pycache__
 db.sqlite3
 .tox
 dist/
+build/
 MANIFEST
