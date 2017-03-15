@@ -224,3 +224,31 @@ class GlobalStatOperationsTestCase(StatOperationsBase, TransactionTestCase):
     def tearDown(self):
         ModelStat.objects.all().delete()
         caches[stats2_settings.CACHE_KEY].clear()
+
+
+class RaceConditionTestCase(TransactionTestCase):
+    """Ad-Hoc test for race conditions on the get_or_create method
+    when multiple proceeses call _get_model_queryset at the same time
+    and create more than one ModelStat with the same parameters defying
+    the constraint.
+    """
+    def setUp(self):
+        self.now = datetime.datetime.now()
+
+        ModelStat.objects.create(name='visits',
+                                 date=self.now,
+                                 value=2)
+        ModelStat.objects.create(name='visits',
+                                 date=self.now,
+                                 value=3)
+        self.stat = Stat(name='visits')
+
+    def tearDown(self):
+        ModelStat.objects.all().delete()
+
+    def test_get_model_queryset_race_condition(self):
+        try:
+            self.assertEqual(self.stat.get(date=self.now), 5)
+            ModelStat.objects.get(date=self.now, name='visits')
+        except ModelStat.MultipleObjectsReturned:
+            self.fail('Race condition not avoided')

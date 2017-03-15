@@ -131,9 +131,23 @@ class Stat(object):
 
     def _get_model_queryset(self, date=timezone.now().date()):
         """Returns the ModelStat queryset for this Stat"""
-        manager_kwargs = self._get_manager_kwargs(date)
+        _kwargs = self._get_manager_kwargs(date)
 
-        model_obj, created = ModelStat.objects.get_or_create(**manager_kwargs)
+        try:
+            model_obj, created = ModelStat.objects.get_or_create(**_kwargs)
+        except ModelStat.MultipleObjectsReturned:
+            # Race condition detected.
+            # try to merge all object into the first one found
+            items = ModelStat.objects.filter(**_kwargs)
+            model_obj = items.first()
+
+            def incr_original(item):
+                model_obj.value += item.value
+
+            map(incr_original, items.exclude(pk=model_obj.pk))
+
+            model_obj.save()
+            items.exclude(pk=model_obj.pk).delete()
 
         return model_obj
 
@@ -148,9 +162,7 @@ class Stat(object):
 
         if value_type == 'history':
             try:
-                stat_result = ModelStat.objects.get(
-                    **self._get_manager_kwargs(date)
-                )
+                stat_result = self._get_model_queryset(date)
                 return stat_result.value
             except ModelStat.DoesNotExist:
                 # Assume zero
