@@ -140,14 +140,13 @@ class Stat(object):
             # try to merge all object into the first one found
             items = ModelStat.objects.filter(**_kwargs)
             model_obj = items.first()
+            duplicates = items.exclude(pk=model_obj.pk)
 
-            def incr_original(item):
+            for item in duplicates:
                 model_obj.value += item.value
 
-            map(incr_original, items.exclude(pk=model_obj.pk))
-
             model_obj.save()
-            items.exclude(pk=model_obj.pk).delete()
+            duplicates.delete()
 
         return model_obj
 
@@ -207,6 +206,10 @@ class Stat(object):
     # Globals
     def _get_value(self, date=None):
         value_type = 'history' if date else 'total'
+
+        if not stats2_settings.USE_CACHE:
+            return self._get_ddbb(value_type, date)
+
         cache_value = self._get_cache(value_type, date)
 
         # If we don't have a cache value we must retireve it from the ddbb
@@ -221,6 +224,9 @@ class Stat(object):
 
     def _get_between(self, date_start, date_end):
         cache_value = self._get_cache('between', date_start, date_end)
+
+        if not stats2_settings.USE_CACHE:
+            return self.get_ddbb_between(date_start, date_end)
 
         # If we don't have the cache value we retrieve it from the ddbb
         if cache_value is None:

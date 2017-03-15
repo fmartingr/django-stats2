@@ -232,6 +232,7 @@ class RaceConditionTestCase(TransactionTestCase):
     and create more than one ModelStat with the same parameters defying
     the constraint.
     """
+
     def setUp(self):
         self.now = datetime.datetime.now()
 
@@ -247,8 +248,15 @@ class RaceConditionTestCase(TransactionTestCase):
         ModelStat.objects.all().delete()
 
     def test_get_model_queryset_race_condition(self):
-        try:
-            self.assertEqual(self.stat.get(date=self.now), 5)
+        result = 5
+
+        def get_model_directly():
             ModelStat.objects.get(date=self.now, name='visits')
+
+        self.assertRaises(ModelStat.MultipleObjectsReturned,
+                          get_model_directly)
+
+        try:
+            self.assertEqual(self.stat.get(date=self.now), result)
         except ModelStat.MultipleObjectsReturned:
             self.fail('Race condition not avoided')
