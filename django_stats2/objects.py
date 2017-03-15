@@ -213,7 +213,7 @@ class Stat(object):
         cache_value = self._get_cache(value_type, date)
 
         # If we don't have a cache value we must retireve it from the ddbb
-        if cache_value is None or not stats2_settings.USE_CACHE:
+        if cache_value is None:
             ddbb_value = self._get_ddbb(value_type, date)
 
             # Store in cache for future access
@@ -229,7 +229,7 @@ class Stat(object):
             return self.get_ddbb_between(date_start, date_end)
 
         # If we don't have the cache value we retrieve it from the ddbb
-        if cache_value is None or not stats2_settings.USE_CACHE:
+        if cache_value is None:
             ddbb_value = self._get_ddbb_between(date_start, date_end)
 
             # Store in cache for future access
